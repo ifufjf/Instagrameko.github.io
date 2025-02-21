@@ -22,15 +22,32 @@
 
   <script>
     // Guardar eventos localmente usando localStorage
-    function guardarEventoLocal(event) {
-      let eventos = JSON.parse(localStorage.getItem('eventos')) || [];
-      eventos.push(event);
+    function guardarEventoLocal(eventos) {
       localStorage.setItem('eventos', JSON.stringify(eventos));
     }
 
     // Cargar eventos desde localStorage
     function cargarEventosDesdeLocal() {
       return JSON.parse(localStorage.getItem('eventos')) || [];
+    }
+
+    // Eliminar evento
+    function eliminarEvento(eventId) {
+      let eventos = cargarEventosDesdeLocal();
+      eventos = eventos.filter(event => event.id !== eventId);
+      guardarEventoLocal(eventos);
+    }
+
+    // Editar evento
+    function editarEvento(eventId, nuevoTitulo, nuevoColor, nuevaFecha) {
+      let eventos = cargarEventosDesdeLocal();
+      let evento = eventos.find(event => event.id === eventId);
+      if (evento) {
+        evento.title = nuevoTitulo || evento.title;
+        evento.backgroundColor = nuevoColor || evento.backgroundColor;
+        evento.start = nuevaFecha || evento.start;
+        guardarEventoLocal(eventos);
+      }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -43,14 +60,41 @@
 
         dateClick: function (info) {
           let eventTitle = prompt('Ingrese el título del evento:');
+          let eventColor = prompt('Ingrese el color del evento (en formato hexadecimal, ej: #ff0000):');
+          let eventHour = prompt('Ingrese la hora del evento (en formato HH:MM, ej: 14:30):');
+          let fullDate = info.dateStr + 'T' + eventHour;
           if (eventTitle) {
             let newEvent = {
+              id: String(Date.now()),
               title: eventTitle,
-              start: info.dateStr,
-              allDay: true
+              start: fullDate,
+              allDay: false,
+              backgroundColor: eventColor || '#3788d8'
             };
             calendar.addEvent(newEvent);
-            guardarEventoLocal(newEvent);
+            let eventos = cargarEventosDesdeLocal();
+            eventos.push(newEvent);
+            guardarEventoLocal(eventos);
+          }
+        },
+
+        eventClick: function (info) {
+          let action = prompt('¿Desea editar (e) o eliminar (d) este evento?');
+          if (action === 'd') {
+            if (confirm('¿Está seguro que desea eliminar este evento?')) {
+              info.event.remove();
+              eliminarEvento(info.event.id);
+            }
+          } else if (action === 'e') {
+            let nuevoTitulo = prompt('Nuevo título del evento:', info.event.title);
+            let nuevoColor = prompt('Nuevo color del evento (hex):', info.event.backgroundColor);
+            let nuevaFecha = prompt('Nueva fecha y hora (YYYY-MM-DDTHH:MM):', info.event.start.toISOString().slice(0,16));
+            if (nuevoTitulo || nuevoColor || nuevaFecha) {
+              info.event.setProp('title', nuevoTitulo || info.event.title);
+              info.event.setProp('backgroundColor', nuevoColor || info.event.backgroundColor);
+              info.event.setStart(nuevaFecha || info.event.start);
+              editarEvento(info.event.id, nuevoTitulo, nuevoColor, nuevaFecha);
+            }
           }
         }
       });
